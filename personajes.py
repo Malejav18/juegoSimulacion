@@ -10,6 +10,10 @@ from automatas import (
     AutomataSuperviviente
 )
 
+from teoria_juegos import (
+    decidir_enfrentamiento
+)
+
 
 # JUGADOR
 
@@ -76,6 +80,15 @@ class Superviviente:
 
         self.ultimoDisparo = -1000
 
+        # TEORÍA DE JUEGOS
+        # Controla cada cuánto se vuelve a decidir
+        # una estrategia contra el zombie cercano.
+        self.cooldownEstrategia = 0
+
+        self.ultimaEstrategia = ""
+
+        self.ultimoEquilibrio = ""
+
         # Cada superviviente tiene
         # su propio autómata
 
@@ -102,6 +115,8 @@ class Superviviente:
     ):
 
         self.cooldown -= dt
+
+        self.cooldownEstrategia -= dt
 
 
         # HERIDO
@@ -179,9 +194,64 @@ class Superviviente:
 
                 if distancia < umbral:
 
-                    self.automata.cambiar_estado(
-                        "detecta_zombie"
-                    )
+                    # TEORÍA DE JUEGOS:
+                    # Cuando el zombie entra en la zona de
+                    # enfrentamiento, ambos agentes eligen
+                    # estrategias mediante un juego 2x2.
+
+                    if (
+                        self.cooldownEstrategia <= 0
+                        and zombie.cooldownEstrategiaJuego <= 0
+                    ):
+
+                        resultado = decidir_enfrentamiento(
+                            self,
+                            zombie,
+                            distancia
+                        )
+
+                        self.ultimaEstrategia = (
+                            resultado["superviviente"]
+                        )
+
+                        self.ultimoEquilibrio = (
+                            resultado["tipo"]
+                        )
+
+                        # La decisión del zombie se aplica como una
+                        # acción estratégica temporal. ESQUIVAR cambia
+                        # de carril; ATACAR mantiene su avance normal.
+                        zombie.aplicar_estrategia_juego(
+                            resultado["zombie"]
+                        )
+
+                        # No se recalcula en cada frame.
+                        self.cooldownEstrategia = 1.0
+
+
+                    # Ejecutar la estrategia elegida por
+                    # el superviviente.
+
+                    if self.ultimaEstrategia == "HUIR":
+
+                        self.automata.cambiar_estado(
+                            "detecta_zombie"
+                        )
+
+                    elif (
+                        self.ultimaEstrategia == "DISPARAR"
+                        and self.cooldown <= 0
+                    ):
+
+                        balas.append([
+                            self.x,
+                            self.carril,
+                            5
+                        ])
+
+                        self.ultimoDisparo = pygame.time.get_ticks()
+
+                        self.cooldown = 1.5
 
                 else:
 
@@ -299,6 +369,17 @@ class Zombie:
 
         self.ultimaDecision = ""
 
+        # TEORÍA DE JUEGOS
+        # Estrategia elegida en el enfrentamiento actual.
+        self.ultimaEstrategiaJuego = ""
+
+        # Tiempo durante el cual se muestra la estrategia en pantalla.
+        self.tiempoEstrategiaJuego = 0
+
+        # Evita que varios supervivientes obliguen al mismo zombie a
+        # recalcular/cambiar de carril varias veces en el mismo instante.
+        self.cooldownEstrategiaJuego = 0
+
         self.fase = random.uniform(0, 10)
 
 
@@ -308,6 +389,51 @@ class Zombie:
         return self.automata.estado
 
 
+    # ACCIÓN ESTRATÉGICA DE TEORÍA DE JUEGOS
+
+    def aplicar_estrategia_juego(
+        self,
+        estrategia,
+        duracion=0.8
+    ):
+
+        self.ultimaEstrategiaJuego = estrategia
+
+        self.tiempoEstrategiaJuego = duracion
+
+        # Bloquea nuevas decisiones sobre este zombie por un instante.
+        self.cooldownEstrategiaJuego = 0.9
+
+        if estrategia == "ESQUIVAR":
+
+            self.esquivar()
+
+
+    def esquivar(self):
+        """
+        Cambia a un carril adyacente para salir de la línea de tiro.
+        No modifica el estado del autómata: un zombie puede seguir
+        LLEGANDO o VAGANDO mientras ejecuta esta acción estratégica.
+        """
+
+        carriles_posibles = []
+
+        if self.carril > 0:
+            carriles_posibles.append(
+                self.carril - 1
+            )
+
+        if self.carril < 2:
+            carriles_posibles.append(
+                self.carril + 1
+            )
+
+        if carriles_posibles:
+            self.carril = random.choice(
+                carriles_posibles
+            )
+
+
     # ACTUALIZAR
 
     def actualizar(
@@ -315,6 +441,23 @@ class Zombie:
         supervivientes,
         dt
     ):
+
+        # TEORÍA DE JUEGOS:
+        # La estrategia solo permanece visible durante un instante.
+        # ESQUIVAR ya cambió el carril al momento de ser seleccionada;
+        # después el autómata continúa funcionando normalmente.
+
+        if self.cooldownEstrategiaJuego > 0:
+            self.cooldownEstrategiaJuego = max(
+                0,
+                self.cooldownEstrategiaJuego - dt
+            )
+
+        if self.tiempoEstrategiaJuego > 0:
+            self.tiempoEstrategiaJuego -= dt
+
+            if self.tiempoEstrategiaJuego <= 0:
+                self.ultimaEstrategiaJuego = ""
 
         # Buscar supervivientes vivos
         # en el mismo carril

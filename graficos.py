@@ -62,6 +62,15 @@ COLOR_HUMOR = {
     "FURIOSO": ROJO,
 }
 
+# Colores para mostrar, de forma separada, la estrategia
+# elegida por la capa de teoría de juegos.
+COLOR_ESTRATEGIA_JUEGO = {
+    "DISPARAR": CIAN,
+    "HUIR": AMARILLO,
+    "ATACAR": ROJO,
+    "ESQUIVAR": CIAN,
+}
+
 
 def tiempo():
 
@@ -818,6 +827,22 @@ def dibujar_superviviente(superviviente):
         COLOR_ESTADO_SUPERVIVIENTE.get(estado, BLANCO)
     )
 
+    # TEORÍA DE JUEGOS:
+    # Se dibuja aparte del estado del autómata para dejar
+    # claro que CAMINAR/HUYENDO es el estado y que
+    # DISPARAR/HUIR es la estrategia elegida por Nash.
+    if superviviente.ultimaEstrategia:
+
+        etiqueta(
+            f"TJ: {superviviente.ultimaEstrategia}",
+            cx,
+            c + 64,
+            COLOR_ESTRATEGIA_JUEGO.get(
+                superviviente.ultimaEstrategia,
+                BLANCO
+            )
+        )
+
 
 def dibujar_zombie(zombie):
 
@@ -949,6 +974,22 @@ def dibujar_zombie(zombie):
         c - 54,
         COLOR_ESTADO_ZOMBIE.get(estado, BLANCO)
     )
+
+    # TEORÍA DE JUEGOS:
+    # La estrategia aparece debajo del zombie mientras está activa
+    # y permanece separada de VAGANDO/LLEGANDO/ATACANDO, que
+    # pertenecen al autómata.
+    if zombie.ultimaEstrategiaJuego:
+
+        etiqueta(
+            f"TJ: {zombie.ultimaEstrategiaJuego}",
+            cx,
+            c + 50,
+            COLOR_ESTRATEGIA_JUEGO.get(
+                zombie.ultimaEstrategiaJuego,
+                BLANCO
+            )
+        )
 
     if zombie.automata.observaciones:
 
