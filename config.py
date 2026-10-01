@@ -17,6 +17,8 @@ reloj = pygame.time.Clock()
 
 fuente = pygame.font.SysFont("Arial", 18)
 fuenteGrande = pygame.font.SysFont("Arial", 40)
+fuentePequena = pygame.font.SysFont("Arial", 13, bold=True)
+fuenteEnorme = pygame.font.SysFont("Arial", 72, bold=True)
 
 # CARRILES
 

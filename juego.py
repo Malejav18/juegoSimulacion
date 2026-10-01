@@ -1,19 +1,15 @@
 import pygame
 
 from config import (
-    pantalla,
     reloj,
     FPS,
     ANCHO,
     CARRILES,
-    fuente,
-    fuenteGrande,
-    BLANCO,
-    NEGRO,
-    VERDE,
-    ROJO,
-    AMARILLO
+    MORADO,
+    CIAN
 )
+
+import graficos
 
 from personajes import (
     Jugador,
@@ -69,6 +65,8 @@ class Juego:
         self.victoria = False
 
         AutomataZombie.reiniciar_estadisticas()
+
+        graficos.limpiar_particulas()
 
         self.viterbiInferencias = -1
 
@@ -127,6 +125,8 @@ class Juego:
 
     def actualizar(self, dt):
 
+        graficos.actualizar_particulas(dt)
+
         # Si terminó, nada se mueve
 
         if self.juegoTerminado:
@@ -180,6 +180,14 @@ class Juego:
         for zombie in self.zombies[:]:
 
             if zombie.vida <= 0:
+
+                graficos.salpicar(
+                    zombie.x + 15,
+                    CARRILES[zombie.carril] - 10,
+                    graficos.SANGRE_ZOMBIE,
+                    28,
+                    200
+                )
 
                 self.zombies.remove(
                     zombie
@@ -246,6 +254,13 @@ class Juego:
 
                     zombie.vida -= bala[2]
 
+                    graficos.salpicar(
+                        zombie.x + 10,
+                        CARRILES[zombie.carril] - 11,
+                        graficos.SANGRE_ZOMBIE,
+                        8 if bala[2] >= 20 else 3
+                    )
+
                     if bala in self.balas:
 
                         self.balas.remove(
@@ -271,89 +286,35 @@ class Juego:
 
     def dibujar(self):
 
-        pantalla.fill(NEGRO)
+        graficos.dibujar_fondo()
 
+        for carril in range(len(CARRILES)):
 
-        # CARRILES
+            for superviviente in self.supervivientes:
 
-        for y in CARRILES:
+                if superviviente.carril == carril:
 
-            pygame.draw.line(
-                pantalla,
-                BLANCO,
-                (0, y + 40),
-                (ANCHO, y + 40)
-            )
+                    superviviente.dibujar()
 
+            for zombie in sorted(self.zombies, key=lambda z: -z.x):
 
-        # JUGADOR
+                if zombie.carril == carril:
 
-        self.jugador.dibujar()
+                    zombie.dibujar()
 
+            if self.jugador.carril == carril:
 
-        # SUPERVIVIENTES
-
-        for superviviente in self.supervivientes:
-
-            superviviente.dibujar()
-
-
-        # ZOMBIES
-
-        for zombie in self.zombies:
-
-            zombie.dibujar()
-
-
-        # BALAS
+                self.jugador.dibujar()
 
         for bala in self.balas:
 
-            pygame.draw.circle(
-                pantalla,
-                AMARILLO,
-                (
-                    int(bala[0]),
-                    CARRILES[bala[1]]
-                ),
-                5
-            )
+            graficos.dibujar_bala(bala[0], bala[1], bala[2])
 
+        graficos.dibujar_particulas()
 
-        # INFORMACIÓN
+        graficos.dibujar_vineta()
 
-        texto = fuente.render(
-
-            f"Zombies eliminados: "
-            f"{self.eliminados}/"
-            f"{self.objetivo}",
-
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            texto,
-            (15, 15)
-        )
-
-
-        controles = fuente.render(
-
-            "W/S = cambiar carril | "
-            "ESPACIO = disparar",
-
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            controles,
-            (500, 15)
-        )
-
-
-        # MARKOV: frecuencia observada vs teórica
+        graficos.dibujar_hud(self.eliminados, self.objetivo)
 
         conteo = AutomataZombie.conteo_markov
 
@@ -372,21 +333,6 @@ class Juego:
                 f"{estado} {observada:.0f}% "
                 f"(π {ESTACIONARIA[estado] * 100:.0f}%)"
             )
-
-        markovTexto = fuente.render(
-
-            f"Markov tras ataque (n={total}): "
-            + " | ".join(partes),
-
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            markovTexto,
-            (15, 470)
-        )
-
 
         if self.viterbiInferencias != AutomataZombie.total_inferencias:
 
@@ -407,75 +353,23 @@ class Juego:
             if AutomataZombie.total_inferencias > 0 else 0
         )
 
-        hmmTexto = fuente.render(
-
-            f"HMM humor oculto: acierto forward "
-            f"{precisionForward:.0f}% | viterbi "
-            f"{precisionViterbi:.0f}%",
-
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            hmmTexto,
-            (15, 445)
-        )
-
-
-        # FIN DEL JUEGO
+        graficos.dibujar_panel_inferior([
+            (
+                f"HMM humor oculto: acierto forward "
+                f"{precisionForward:.0f}% | viterbi "
+                f"{precisionViterbi:.0f}%",
+                MORADO
+            ),
+            (
+                f"Markov tras ataque (n={total}): "
+                + " | ".join(partes),
+                CIAN
+            ),
+        ])
 
         if self.juegoTerminado:
 
-            if self.victoria:
-
-                mensaje = "¡GANASTE!"
-
-                color = VERDE
-
-            else:
-
-                mensaje = "PERDISTE"
-
-                color = ROJO
-
-
-            textoFinal = fuenteGrande.render(
-                mensaje,
-                True,
-                color
-            )
-
-            pantalla.blit(
-                textoFinal,
-                (
-                    ANCHO // 2
-                    - textoFinal.get_width() // 2,
-
-                    45
-                )
-            )
-
-
-            reiniciar = fuente.render(
-
-                "Juego detenido - "
-                "Presiona R para reiniciar",
-
-                True,
-                BLANCO
-            )
-
-            pantalla.blit(
-                reiniciar,
-                (
-                    ANCHO // 2
-                    - reiniciar.get_width() // 2,
-
-                    90
-                )
-            )
-
+            graficos.dibujar_final(self.victoria)
 
         pygame.display.flip()
 

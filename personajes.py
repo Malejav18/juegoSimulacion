@@ -1,20 +1,9 @@
 import pygame
 import random
 
-from config import (
-    pantalla,
-    CARRILES,
-    ANCHO,
-    fuente,
-    BLANCO,
-    ROJO,
-    VERDE,
-    AZUL,
-    AMARILLO,
-    NARANJA,
-    MORADO,
-    CIAN
-)
+from config import CARRILES
+
+import graficos
 
 from automatas import (
     AutomataZombie,
@@ -31,6 +20,8 @@ class Jugador:
         self.x = 60
         self.carril = 1
         self.vida = 100
+        self.fase = random.uniform(0, 10)
+        self.ultimoDisparo = -1000
 
 
     def subir(self):
@@ -51,6 +42,8 @@ class Jugador:
 
     def disparar(self):
 
+        self.ultimoDisparo = pygame.time.get_ticks()
+
         return [
             self.x,
             self.carril,
@@ -60,24 +53,7 @@ class Jugador:
 
     def dibujar(self):
 
-        y = CARRILES[self.carril]
-
-        pygame.draw.rect(
-            pantalla,
-            AZUL,
-            (self.x, y - 20, 30, 40)
-        )
-
-        texto = fuente.render(
-            "JUGADOR",
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            texto,
-            (self.x - 15, y - 45)
-        )
+        graficos.dibujar_jugador(self)
 
 
 # SUPERVIVIENTE
@@ -95,6 +71,10 @@ class Superviviente:
         self.cooldown = 0
 
         self.tiempoEstado = 0
+
+        self.fase = random.uniform(0, 10)
+
+        self.ultimoDisparo = -1000
 
         # Cada superviviente tiene
         # su propio autómata
@@ -215,6 +195,8 @@ class Superviviente:
                             5
                         ])
 
+                        self.ultimoDisparo = pygame.time.get_ticks()
+
                         self.cooldown = 1.5
 
 
@@ -267,6 +249,13 @@ class Superviviente:
         # Actualizar el estado
         self.vida = nueva_vida
 
+        graficos.salpicar(
+            self.x + 15,
+            CARRILES[self.carril] - 10,
+            graficos.SANGRE_HUMANA,
+            10
+        )
+
         # Cambiar el estado del autómata
         if self.estado != "HUYENDO":
             self.automata.estado = "HUYENDO"
@@ -281,59 +270,7 @@ class Superviviente:
 
     def dibujar(self):
 
-        if self.vida <= 0:
-            return
-
-        y = CARRILES[self.carril]
-
-        color = VERDE
-
-        if self.estado == "HUYENDO":
-
-            color = AMARILLO
-
-        elif self.estado == "HERIDO":
-
-            color = ROJO
-
-        elif self.estado == "A_SALVO":
-
-            color = MORADO
-
-
-        pygame.draw.rect(
-            pantalla,
-            color,
-            (self.x, y - 20, 30, 40)
-        )
-
-
-        # Estado
-
-        texto = fuente.render(
-            self.estado,
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            texto,
-            (self.x - 20, y - 45)
-        )
-
-
-        # Vida
-
-        vidaTexto = fuente.render(
-            f"Vida: {self.porcentaje_vida:.0f}%",
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            vidaTexto,
-            (self.x + 5, y + 25)
-        )
+        graficos.dibujar_superviviente(self)
 
 
 # ZOMBIE
@@ -361,6 +298,8 @@ class Zombie:
         # Última decisión de la cadena de Markov
 
         self.ultimaDecision = ""
+
+        self.fase = random.uniform(0, 10)
 
 
     @property
@@ -505,90 +444,4 @@ class Zombie:
 
     def dibujar(self):
 
-        y = CARRILES[self.carril]
-
-        color = ROJO
-
-
-        if self.estado == "VAGANDO":
-
-            color = ROJO
-
-
-        elif self.estado == "LLEGANDO":
-
-            color = NARANJA
-
-
-        elif self.estado == "ATACANDO":
-
-            color = MORADO
-
-
-        elif self.estado == "ESPERANDO":
-
-            color = AMARILLO
-
-
-        elif self.estado == "RETROCEDIENDO":
-
-            color = CIAN
-
-
-        pygame.draw.rect(
-            pantalla,
-            color,
-            (self.x, y - 20, 30, 40)
-        )
-
-
-        # Estado (y decisión de Markov si hubo)
-
-        etiqueta = self.estado
-
-        if self.ultimaDecision:
-
-            etiqueta += f" [{self.ultimaDecision}]"
-
-        texto = fuente.render(
-            etiqueta,
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            texto,
-            (self.x - 20, y - 45)
-        )
-
-
-        if self.automata.observaciones:
-
-            estimacion = self.automata.estimacion
-
-            probabilidad = self.automata.creencia_actual[estimacion]
-
-            hmmTexto = fuente.render(
-                f"HMM: {estimacion} {probabilidad * 100:.0f}%",
-                True,
-                BLANCO
-            )
-
-            pantalla.blit(
-                hmmTexto,
-                (self.x - 20, y - 65)
-            )
-
-
-        # Vida
-
-        vidaTexto = fuente.render(
-            str(self.vida),
-            True,
-            BLANCO
-        )
-
-        pantalla.blit(
-            vidaTexto,
-            (self.x + 2, y + 25)
-        )
+        graficos.dibujar_zombie(self)
