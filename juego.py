@@ -23,15 +23,12 @@ from personajes import (
 
 from automatas import AutomataZombie
 
-from markov import crear_cadena_ataque
+from markov import crear_hmm_zombie
 
-
-# Distribución estacionaria teórica
-# de la cadena de ataque del zombie
 
 ESTACIONARIA = (
-    crear_cadena_ataque()
-    .distribucion_estacionaria()
+    crear_hmm_zombie()
+    .distribucion_observaciones()
 )
 
 
@@ -71,11 +68,11 @@ class Juego:
 
         self.victoria = False
 
-        # Reiniciar conteo de Markov
+        AutomataZombie.reiniciar_estadisticas()
 
-        for estado in AutomataZombie.conteo_markov:
+        self.viterbiInferencias = -1
 
-            AutomataZombie.conteo_markov[estado] = 0
+        self.viterbiResultado = (0, 0)
 
 
     # EVENTOS
@@ -388,6 +385,41 @@ class Juego:
         pantalla.blit(
             markovTexto,
             (15, 470)
+        )
+
+
+        if self.viterbiInferencias != AutomataZombie.total_inferencias:
+
+            self.viterbiResultado = AutomataZombie.precision_viterbi()
+
+            self.viterbiInferencias = AutomataZombie.total_inferencias
+
+        aciertosViterbi, totalViterbi = self.viterbiResultado
+
+        precisionViterbi = (
+            aciertosViterbi / totalViterbi * 100
+            if totalViterbi > 0 else 0
+        )
+
+        precisionForward = (
+            AutomataZombie.aciertos_forward
+            / AutomataZombie.total_inferencias * 100
+            if AutomataZombie.total_inferencias > 0 else 0
+        )
+
+        hmmTexto = fuente.render(
+
+            f"HMM humor oculto: acierto forward "
+            f"{precisionForward:.0f}% | viterbi "
+            f"{precisionViterbi:.0f}%",
+
+            True,
+            BLANCO
+        )
+
+        pantalla.blit(
+            hmmTexto,
+            (15, 445)
         )
 
 

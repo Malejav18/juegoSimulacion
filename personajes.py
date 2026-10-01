@@ -191,7 +191,13 @@ class Superviviente:
 
             if self.estado == "CAMINAR":
 
-                if distancia < 150:
+                umbral = 150
+
+                if zombie.automata.creencia_actual["FURIOSO"] > 0.5:
+
+                    umbral = 200
+
+                if distancia < umbral:
 
                     self.automata.cambiar_estado(
                         "detecta_zombie"
@@ -554,6 +560,24 @@ class Zombie:
             texto,
             (self.x - 20, y - 45)
         )
+
+
+        if self.automata.observaciones:
+
+            estimacion = self.automata.estimacion
+
+            probabilidad = self.automata.creencia_actual[estimacion]
+
+            hmmTexto = fuente.render(
+                f"HMM: {estimacion} {probabilidad * 100:.0f}%",
+                True,
+                BLANCO
+            )
+
+            pantalla.blit(
+                hmmTexto,
+                (self.x - 20, y - 65)
+            )
 
 
         # Vida

@@ -1,4 +1,4 @@
-from markov import crear_cadena_ataque, ESTADOS_ATAQUE
+from markov import crear_hmm_zombie, ESTADOS_ATAQUE
 
 
 # AUTÓMATA DEL SUPERVIVIENTE
@@ -48,6 +48,12 @@ class AutomataZombie:
 
     conteo_markov = {estado: 0 for estado in ESTADOS_ATAQUE}
 
+    historiales = []
+
+    aciertos_forward = 0
+
+    total_inferencias = 0
+
     # Decisión de Markov -> evento del autómata
 
     EVENTO_MARKOV = {
@@ -60,10 +66,15 @@ class AutomataZombie:
 
         self.estado = "VAGANDO"
 
-        # Cada zombie tiene su propia
-        # cadena de Markov
+        self.hmm = crear_hmm_zombie()
 
-        self.cadena = crear_cadena_ataque()
+        self.observaciones = []
+
+        self.ocultos = []
+
+        self.creencia = None
+
+        AutomataZombie.historiales.append(self)
 
         self.estados = {
 
@@ -105,7 +116,22 @@ class AutomataZombie:
 
     def terminar_ataque(self):
 
-        decision = self.cadena.siguiente()
+        oculto, decision = self.hmm.paso()
+
+        self.ocultos.append(oculto)
+
+        self.observaciones.append(decision)
+
+        self.creencia = self.hmm.filtrar(
+            self.creencia,
+            decision
+        )
+
+        AutomataZombie.total_inferencias += 1
+
+        if self.estimacion == oculto:
+
+            AutomataZombie.aciertos_forward += 1
 
         AutomataZombie.conteo_markov[decision] += 1
 
@@ -114,3 +140,59 @@ class AutomataZombie:
         )
 
         return decision
+
+
+    @property
+    def creencia_actual(self):
+
+        if self.creencia is None:
+
+            return self.hmm.forward([])
+
+        return self.creencia
+
+
+    @property
+    def estimacion(self):
+
+        creencia = self.creencia_actual
+
+        return max(creencia, key=creencia.get)
+
+
+    @classmethod
+    def precision_viterbi(cls):
+
+        aciertos = 0
+
+        total = 0
+
+        for automata in cls.historiales:
+
+            decodificados = automata.hmm.viterbi(
+                automata.observaciones
+            )
+
+            for real, estimado in zip(automata.ocultos, decodificados):
+
+                total += 1
+
+                if real == estimado:
+
+                    aciertos += 1
+
+        return aciertos, total
+
+
+    @classmethod
+    def reiniciar_estadisticas(cls):
+
+        for estado in cls.conteo_markov:
+
+            cls.conteo_markov[estado] = 0
+
+        cls.historiales.clear()
+
+        cls.aciertos_forward = 0
+
+        cls.total_inferencias = 0
