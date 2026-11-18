@@ -2,15 +2,6 @@ import math
 import random
 
 
-# CADENA DE MARKOV
-#
-# P[i][j] = probabilidad de pasar
-# del estado i al estado j.
-# Cada fila debe sumar 1.
-#
-# Propiedad de Markov:
-# P(X(n+1) = j | X(n) = i, X(n-1), ...)
-#   = P(X(n+1) = j | X(n) = i)
 
 class CadenaMarkov:
 
@@ -22,7 +13,6 @@ class CadenaMarkov:
 
         self.estado = estado_inicial
 
-        # Validar que cada fila sume 1
 
         for i, fila in enumerate(matriz):
 
@@ -34,11 +24,7 @@ class CadenaMarkov:
                 )
 
 
-    # SIGUIENTE ESTADO
-    # Método de la transformada inversa:
-    # se genera U ~ Uniforme(0, 1) y se
-    # elige el primer estado cuya
-    # probabilidad acumulada supere U.
+   
 
     def siguiente(self):
 
@@ -60,15 +46,11 @@ class CadenaMarkov:
 
                 return estado
 
-        # Por errores de redondeo
         self.estado = self.estados[-1]
 
         return self.estado
 
 
-    # DISTRIBUCIÓN ESTACIONARIA
-    # Se calcula pi = pi * P repitiendo
-    # la multiplicación hasta converger.
 
     def distribucion_estacionaria(self, iteraciones=1000):
 
@@ -86,19 +68,15 @@ class CadenaMarkov:
         return dict(zip(self.estados, pi))
 
 
-# CADENA DEL ZOMBIE AL TERMINAR UN ATAQUE
-#
-# ESPERAR    -> descansa antes de volver
-# FRENESI    -> ataca otra vez de inmediato
-# RETROCEDER -> se aleja y vuelve a acercarse
+
 
 ESTADOS_ATAQUE = ["ESPERAR", "FRENESI", "RETROCEDER"]
 
 MATRIZ_ATAQUE = [
     #  ESPERAR  FRENESI  RETROCEDER
     [0.50, 0.30, 0.20],   # desde ESPERAR
-    [0.60, 0.25, 0.15],   # desde FRENESI (se cansa)
-    [0.20, 0.70, 0.10],   # desde RETROCEDER (vuelve con furia)
+    [0.60, 0.25, 0.15],   # desde FRENESI 
+    [0.20, 0.70, 0.10],   # desde RETROCEDER 
 ]
 
 
