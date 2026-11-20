@@ -960,7 +960,7 @@ def dibujar_zombie(zombie):
         2
     )
 
-    barra_vida(cx, c - 40, zombie.vida / 200)
+    barra_vida(cx, c - 40, zombie.vida / zombie.vidaMaxima)
 
     texto_estado = estado
 
@@ -989,6 +989,19 @@ def dibujar_zombie(zombie):
                 zombie.ultimaEstrategiaJuego,
                 BLANCO
             )
+        )
+
+    else:
+
+        genoma = zombie.genoma
+
+        etiqueta(
+            f"G{zombie.generacion} v{genoma['velocidad']:.1f} "
+            f"esq {genoma['prob_esquivar'] * 100:.0f}% "
+            f"r{genoma['reaccion']:.0f}",
+            cx,
+            c + 50,
+            CIAN if zombie.pausaEsquiva > 0 else VERDE
         )
 
     if zombie.automata.observaciones:
@@ -1174,21 +1187,25 @@ def dibujar_hud(eliminados, objetivo):
 
 def dibujar_panel_inferior(lineas):
 
-    panel = pygame.Surface((ANCHO, 64), pygame.SRCALPHA)
+    alto = 8 + 20 * len(lineas)
+
+    panel = pygame.Surface((ANCHO, alto), pygame.SRCALPHA)
 
     panel.fill((10, 10, 16, 185))
 
     pygame.draw.line(panel, (255, 255, 255, 40), (0, 0), (ANCHO, 0))
 
-    pantalla.blit(panel, (0, ALTO - 64))
+    pantalla.blit(panel, (0, ALTO - alto))
 
     for i, (texto, color) in enumerate(lineas):
 
-        pygame.draw.circle(pantalla, color, (20, ALTO - 50 + i * 26), 4)
+        y = ALTO - alto + 3 + i * 20
+
+        pygame.draw.circle(pantalla, color, (20, y + 11), 4)
 
         render = fuente.render(texto, True, BLANCO)
 
-        pantalla.blit(render, (32, ALTO - 61 + i * 26))
+        pantalla.blit(render, (32, y))
 
 
 def dibujar_final(victoria):

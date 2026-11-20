@@ -6,8 +6,11 @@ from config import (
     ANCHO,
     CARRILES,
     MORADO,
-    CIAN
+    CIAN,
+    VERDE
 )
+
+from genetico import AlgoritmoGenetico
 
 import graficos
 
@@ -71,6 +74,8 @@ class Juego:
         self.viterbiInferencias = -1
 
         self.viterbiResultado = (0, 0)
+
+        self.evolucion = AlgoritmoGenetico()
 
 
     # EVENTOS
@@ -141,7 +146,10 @@ class Juego:
         if self.tiempoZombie > 3:
 
             self.zombies.append(
-                Zombie()
+                Zombie(
+                    self.evolucion.nuevo_genoma(),
+                    self.evolucion.generacion
+                )
             )
 
             self.tiempoZombie = 0
@@ -166,6 +174,8 @@ class Juego:
 
             zombie.actualizar(
                 self.supervivientes,
+                self.balas,
+                self.jugador,
                 dt
             )
 
@@ -194,6 +204,16 @@ class Juego:
                 )
 
                 self.eliminados += 1
+
+                self.evolucion.evaluar(zombie)
+
+            elif zombie.x < -40:
+
+                self.zombies.remove(
+                    zombie
+                )
+
+                self.evolucion.evaluar(zombie, escapo=True)
 
 
         # VICTORIA
@@ -353,7 +373,34 @@ class Juego:
             if AutomataZombie.total_inferencias > 0 else 0
         )
 
+        mejor = self.evolucion.mejor
+
+        if mejor:
+
+            genoma, fitnessMejor = mejor
+
+            textoGenetico = (
+                f"Genético gen {self.evolucion.generacion} "
+                f"(n={self.evolucion.evaluados}): mejor "
+                f"{fitnessMejor:.0f} | prom {self.evolucion.promedio:.0f}"
+                f" | élite v{genoma['velocidad']:.2f} "
+                f"esq {genoma['prob_esquivar'] * 100:.0f}% "
+                f"reac {genoma['reaccion']:.0f} "
+                f"evita {genoma['evitar_peligro'] * 100:.0f}%"
+            )
+
+        else:
+
+            textoGenetico = (
+                f"Genético gen {self.evolucion.generacion}: "
+                f"esperando zombies evaluados..."
+            )
+
         graficos.dibujar_panel_inferior([
+            (
+                textoGenetico,
+                VERDE
+            ),
             (
                 f"HMM humor oculto: acierto forward "
                 f"{precisionForward:.0f}% | viterbi "

@@ -14,6 +14,8 @@ from teoria_juegos import (
     decidir_enfrentamiento
 )
 
+from genetico import genoma_aleatorio
+
 
 # JUGADOR
 
@@ -347,7 +349,7 @@ class Superviviente:
 
 class Zombie:
 
-    def __init__(self):
+    def __init__(self, genoma=None, generacion=1):
 
         self.x = 750
 
@@ -356,7 +358,29 @@ class Zombie:
             2
         )
 
-        self.vida = 200
+        self.genoma = genoma or genoma_aleatorio()
+
+        self.generacion = generacion
+
+        self.vidaMaxima = int(
+            200 * (1.5 - 0.5 * self.genoma["velocidad"])
+        )
+
+        self.vida = self.vidaMaxima
+
+        self.danoInfligido = 0
+
+        self.esquivas = 0
+
+        self.xMinimo = self.x
+
+        self.cooldownEsquiva = 0
+
+        self.pausaEsquiva = 0
+
+        self.balasVistas = set()
+
+        self.carrilElegido = False
 
         self.cooldown = 0
 
@@ -434,13 +458,164 @@ class Zombie:
             )
 
 
+    def peligro_carril(
+        self,
+        carril,
+        supervivientes,
+        balas,
+        jugador
+    ):
+
+        peligro = sum(
+            1
+            for bala in balas
+            if bala[1] == carril and bala[0] < self.x
+        )
+
+        peligro += sum(
+            1.5
+            for superviviente in supervivientes
+            if (
+                superviviente.vida > 0
+                and superviviente.carril == carril
+                and superviviente.x < self.x
+            )
+        )
+
+        if jugador.carril == carril:
+
+            peligro += 2
+
+        return peligro
+
+
+    def elegir_carril_inicial(
+        self,
+        supervivientes,
+        balas,
+        jugador
+    ):
+
+        self.carrilElegido = True
+
+        if random.random() < self.genoma["evitar_peligro"]:
+
+            self.carril = min(
+                random.sample(range(3), 3),
+                key=lambda carril: self.peligro_carril(
+                    carril, supervivientes, balas, jugador
+                )
+            )
+
+
+    def esquivar_optimo(
+        self,
+        supervivientes,
+        balas,
+        jugador
+    ):
+
+        opciones = [
+            carril
+            for carril in (self.carril - 1, self.carril + 1)
+            if 0 <= carril <= 2
+        ]
+
+        if random.random() < self.genoma["evitar_peligro"]:
+
+            self.carril = min(
+                opciones,
+                key=lambda carril: self.peligro_carril(
+                    carril, supervivientes, balas, jugador
+                )
+            )
+
+        else:
+
+            self.carril = random.choice(opciones)
+
+        self.esquivas += 1
+
+        self.cooldownEsquiva = 0.7
+
+        self.pausaEsquiva = 0.25
+
+
+    def reaccionar_balas(
+        self,
+        supervivientes,
+        balas,
+        jugador
+    ):
+
+        if self.cooldownEsquiva > 0:
+
+            return
+
+        for bala in balas:
+
+            clave = id(bala)
+
+            if bala[1] != self.carril or clave in self.balasVistas:
+
+                continue
+
+            distancia = self.x - bala[0]
+
+            if 0 < distancia < self.genoma["reaccion"]:
+
+                self.balasVistas.add(clave)
+
+                if random.random() < self.genoma["prob_esquivar"]:
+
+                    self.esquivar_optimo(
+                        supervivientes,
+                        balas,
+                        jugador
+                    )
+
+                    return
+
+
     # ACTUALIZAR
 
     def actualizar(
         self,
         supervivientes,
+        balas,
+        jugador,
         dt
     ):
+
+        self.xMinimo = min(self.xMinimo, self.x)
+
+        if not self.carrilElegido:
+
+            self.elegir_carril_inicial(
+                supervivientes,
+                balas,
+                jugador
+            )
+
+        if self.cooldownEsquiva > 0:
+
+            self.cooldownEsquiva -= dt
+
+        if self.pausaEsquiva > 0:
+
+            self.pausaEsquiva -= dt
+
+            return
+
+        if self.estado in ("VAGANDO", "LLEGANDO", "RETROCEDIENDO"):
+
+            self.reaccionar_balas(
+                supervivientes,
+                balas,
+                jugador
+            )
+
+        velocidad = self.genoma["velocidad"]
 
         # TEORÍA DE JUEGOS:
         # La estrategia solo permanece visible durante un instante.
@@ -484,7 +659,7 @@ class Zombie:
 
             self.automata.estado = "VAGANDO"
 
-            self.x -= 30 * dt
+            self.x -= 30 * velocidad * dt
 
             return
 
@@ -500,7 +675,7 @@ class Zombie:
 
         if self.estado == "VAGANDO":
 
-            self.x -= 30 * dt
+            self.x -= 30 * velocidad * dt
 
             if distancia < 250:
 
@@ -513,7 +688,7 @@ class Zombie:
 
         elif self.estado == "LLEGANDO":
 
-            self.x -= 40 * dt
+            self.x -= 40 * velocidad * dt
 
             if distancia < 45:
 
@@ -533,6 +708,8 @@ class Zombie:
             if self.cooldown <= 0:
 
                 objetivo.recibir_dano()
+
+                self.danoInfligido += 10
 
                 # CADENA DE MARKOV:
                 # decide qué hace después del ataque
