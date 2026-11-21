@@ -12,6 +12,8 @@ from config import (
 
 from genetico import AlgoritmoGenetico
 
+from estocastico import ProcesoPoisson, dano_zombie
+
 import graficos
 
 from personajes import (
@@ -57,7 +59,9 @@ class Juego:
 
         self.balas = []
 
-        self.tiempoZombie = 0
+        self.llegadas = ProcesoPoisson()
+
+        dano_zombie.reiniciar()
 
         self.eliminados = 0
 
@@ -141,9 +145,7 @@ class Juego:
 
         # CREAR ZOMBIES
 
-        self.tiempoZombie += dt
-
-        if self.tiempoZombie > 3:
+        for _ in range(self.llegadas.actualizar(dt)):
 
             self.zombies.append(
                 Zombie(
@@ -151,8 +153,6 @@ class Juego:
                     self.evolucion.generacion
                 )
             )
-
-            self.tiempoZombie = 0
 
 
         # SUPERVIVIENTES
@@ -334,7 +334,20 @@ class Juego:
 
         graficos.dibujar_vineta()
 
-        graficos.dibujar_hud(self.eliminados, self.objetivo)
+        proceso = self.llegadas
+
+        graficos.dibujar_hud(
+            self.eliminados,
+            self.objetivo,
+            [
+                f"Poisson λ(t)={proceso.tasa(proceso.tiempo):.2f}/s  "
+                f"N={proceso.llegadas}  "
+                f"E[N]={proceso.esperadas(proceso.tiempo):.1f}",
+                f"Daño N({dano_zombie.media},{dano_zombie.desviacion}): "
+                f"x̄={dano_zombie.promedio:.1f} "
+                f"s={dano_zombie.desviacion_observada:.1f}"
+            ]
+        )
 
         conteo = AutomataZombie.conteo_markov
 

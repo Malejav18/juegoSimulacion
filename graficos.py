@@ -1125,7 +1125,7 @@ def texto_suave(texto, x, y, color=BLANCO, letra=None):
     return x + render.get_width()
 
 
-def dibujar_hud(eliminados, objetivo):
+def dibujar_hud(eliminados, objetivo, lineas_estocastico=()):
 
     barra = pygame.Surface((ANCHO, 44), pygame.SRCALPHA)
 
@@ -1167,6 +1167,10 @@ def dibujar_hud(eliminados, objetivo):
             (44, 27, int(220 * progreso), 8),
             border_radius=4
         )
+
+    for i, linea in enumerate(lineas_estocastico):
+
+        texto_suave(linea, 280, 5 + i * 18, AMARILLO)
 
     x = 520
 

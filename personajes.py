@@ -16,6 +16,8 @@ from teoria_juegos import (
 
 from genetico import genoma_aleatorio
 
+from estocastico import dano_zombie
+
 
 # JUGADOR
 
@@ -707,9 +709,11 @@ class Zombie:
 
             if self.cooldown <= 0:
 
-                objetivo.recibir_dano()
+                dano = dano_zombie.muestrear()
 
-                self.danoInfligido += 10
+                objetivo.recibir_dano(dano)
+
+                self.danoInfligido += dano
 
                 # CADENA DE MARKOV:
                 # decide qué hace después del ataque
